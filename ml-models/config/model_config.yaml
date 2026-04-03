@@ -1,0 +1,17 @@
+models:
+  anomaly_detection:
+    path: "artifacts/anomaly_detection.onnx"
+    input_shape: [1, 10]
+    output_shape: [1, 1]
+    threshold: 0.5
+    
+  threat_classification:
+    path: "artifacts/threat_classification.onnx"
+    input_shape: [1, 20]
+    output_shape: [1, 5]
+    
+training:
+  batch_size: 32
+  epochs: 100
+  learning_rate: 0.001
+  validation_split: 0.2

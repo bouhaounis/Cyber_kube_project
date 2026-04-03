@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ksoc-api-go
+  namespace: k-soc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ksoc-api-go
+  template:
+    metadata:
+      labels:
+        app: ksoc-api-go
+    spec:
+      serviceAccountName: ksoc-service-account
+      containers:
+        - name: api-go
+          image: cyberkube/api-go:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8081
+          env:
+            - name: ADDR
+              value: ":8081"
+            - name: ENGINE_URL
+              value: "http://ksoc-engine:7000"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ksoc-jwt-secret
+                  key: JWT_SECRET
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ksoc-admin-secret
+                  key: ADMIN_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3

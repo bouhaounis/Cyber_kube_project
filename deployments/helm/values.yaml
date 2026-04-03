@@ -1,0 +1,38 @@
+apiGo:
+  replicaCount: 2
+  image:
+    repository: cyber-kube/api-go
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 8080
+
+engine:
+  replicaCount: 2
+  image:
+    repository: cyber-kube/engine
+    tag: latest
+  service:
+    type: ClusterIP
+    port: 7000
+
+dashboard:
+  replicaCount: 1
+  image:
+    repository: cyber-kube/dashboard
+    tag: latest
+  service:
+    type: LoadBalancer
+    port: 3000
+
+ebpfAgent:
+  enabled: true
+  image:
+    repository: cyber-kube/ebpf-agent
+    tag: latest
+
+mlModels:
+  enabled: true
+  image:
+    repository: cyber-kube/ml-models
+    tag: latest

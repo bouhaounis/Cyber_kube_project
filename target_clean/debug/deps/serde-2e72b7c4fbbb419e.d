@@ -1,0 +1,14 @@
+C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\deps\serde-2e72b7c4fbbb419e.d: C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\build\serde-0cb73bd5951d592a\out/private.rs
+
+C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\deps\libserde-2e72b7c4fbbb419e.rlib: C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\build\serde-0cb73bd5951d592a\out/private.rs
+
+C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\deps\libserde-2e72b7c4fbbb419e.rmeta: C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\build\serde-0cb73bd5951d592a\out/private.rs
+
+C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs:
+C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs:
+C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs:
+C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:
+C:\Users\Mega-PC\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs:
+C:\Users\Mega-PC\Desktop\Cyber_kube_project\target_clean\debug\build\serde-0cb73bd5951d592a\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\Mega-PC\\Desktop\\Cyber_kube_project\\target_clean\\debug\\build\\serde-0cb73bd5951d592a\\out

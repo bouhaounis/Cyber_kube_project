@@ -1,0 +1,14 @@
+{
+  "id": "sample-wasm-demo",
+  "name": "Sample WASM Demo",
+  "description": "Demonstrates a WASM-backed policy module without affecting live decisions by default.",
+  "enabled": false,
+  "rules": [
+    {
+      "id": "sample-wasm-demo-rule",
+      "condition": "sample_wasm_policy.wat",
+      "action": "Alert",
+      "priority": 10
+    }
+  ]
+}

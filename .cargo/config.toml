@@ -1,0 +1,46 @@
+[alias]
+windows-check-all-targets = [
+    "check",
+    "--all-targets",
+    "--config",
+    "build.jobs=1",
+    "--config",
+    "profile.dev.incremental=false",
+]
+windows-build-all-targets = [
+    "build",
+    "--all-targets",
+    "--config",
+    "build.jobs=1",
+    "--config",
+    "profile.dev.incremental=false",
+]
+windows-clippy-all-targets = [
+    "clippy",
+    "--all-targets",
+    "--config",
+    "build.jobs=1",
+    "--config",
+    "profile.dev.incremental=false",
+    "--",
+    "-D",
+    "warnings",
+]
+windows-test = [
+    "test",
+    "--config",
+    "build.jobs=1",
+    "--config",
+    "profile.dev.incremental=false",
+]
+windows-test-examples = [
+    "test",
+    "--examples",
+    "--config",
+    "build.jobs=1",
+    "--config",
+    "profile.dev.incremental=false",
+]
+
+[target.'cfg(windows)']
+rustflags = ["-C", "debuginfo=0"]

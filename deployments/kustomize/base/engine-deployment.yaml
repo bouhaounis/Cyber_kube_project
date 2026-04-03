@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ksoc-engine
+  namespace: k-soc
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ksoc-engine
+  template:
+    metadata:
+      labels:
+        app: ksoc-engine
+    spec:
+      serviceAccountName: ksoc-service-account
+      containers:
+        - name: engine
+          image: cyberkube/engine:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 7000
+          env:
+            - name: ENGINE_ADDR
+              value: "0.0.0.0:7000"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ksoc-jwt-secret
+                  key: JWT_SECRET
+            - name: K8S_METADATA_ENABLED
+              value: "true"
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3

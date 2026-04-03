@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  engine:
+    build: ./engine
+    environment:
+      - RUST_LOG=info
+      - CYBERKUBE_API_URL=http://api-go:8081
+    ports:
+      - "7000:7000"
+
+  api-go:
+    build: ./api-go
+    ports:
+      - "8081:8081"
+    environment:
+      - CYBERKUBE_ENGINE_URL=http://engine:7000
+    depends_on:
+      - engine
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8081
+    depends_on:
+      - api-go

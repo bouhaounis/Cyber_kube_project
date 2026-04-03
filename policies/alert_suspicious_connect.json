@@ -1,0 +1,14 @@
+{
+  "id": "alert-suspicious-connect",
+  "name": "Alert Suspicious Connect",
+  "description": "Raises an alert when runtime connect activity is observed from monitored workloads.",
+  "enabled": true,
+  "rules": [
+    {
+      "id": "alert-on-connect",
+      "condition": "event_type == \"connect\" || payload.message contains \"connect\"",
+      "action": "Alert",
+      "priority": 60
+    }
+  ]
+}

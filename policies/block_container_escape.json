@@ -1,0 +1,14 @@
+{
+  "id": "block-container-escape",
+  "name": "Block Container Escape",
+  "description": "Blocks high-confidence container escape attempts from runtime telemetry.",
+  "enabled": true,
+  "rules": [
+    {
+      "id": "block-escape-attempt",
+      "condition": "event_type == \"container_escape_attempt\"",
+      "action": "Block",
+      "priority": 100
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ksoc-ml-service
+  namespace: k-soc
+spec:
+  selector:
+    app: ksoc-ml-service
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package cyberkube.engine.v1;
+
+service PolicyEngine {
+  rpc Evaluate(Event) returns (Decision) {}
+  rpc ListPolicies(Empty) returns (PolicyList) {}
+  rpc StreamEvents(Empty) returns (stream Event) {}
+  rpc StreamTlsEvents(Empty) returns (stream TlsEvent) {}
+}
+
+message Empty {}
+
+message Event {
+  string kind = 1;
+  string source = 2;
+  string payload = 3;
+}
+
+message TlsEvent {
+  uint32 pid = 1;
+  uint32 tid = 2;
+  uint64 timestamp_ns = 3;
+  string direction = 4;
+  uint32 bytes_transferred = 5;
+  bytes payload = 6;
+  string protocol = 7;
+  uint32 tls_content_type = 8;
+  uint32 tls_version = 9;
+  uint32 http2_frame_type = 10;
+  uint32 http2_stream_id = 11;
+  uint32 http2_flags = 12;
+}
+
+message Decision {
+  string action = 1;
+  string reason = 2;
+}
+
+message Policy {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string wasm_module = 4;
+}
+
+message PolicyList {
+  repeated Policy items = 1;
+}
+

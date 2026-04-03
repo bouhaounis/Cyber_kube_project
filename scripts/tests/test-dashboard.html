@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber-Kube Dashboard Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        h2 {
+            color: #81C784;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Cyber-Kube Dashboard Test Page</h1>
+    <p>Test the API endpoints directly from the browser</p>
+
+    <div class="test-section">
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">Test Health</button>
+        <div id="health-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Create Policy</h2>
+        <button onclick="createPolicy()">Create Test Policy</button>
+        <div id="create-policy-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. List Policies</h2>
+        <button onclick="listPolicies()">List All Policies</button>
+        <div id="list-policies-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Create Alert</h2>
+        <button onclick="createAlert()">Create Test Alert</button>
+        <div id="create-alert-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. List Alerts</h2>
+        <button onclick="listAlerts()">List All Alerts</button>
+        <div id="list-alerts-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Run All Tests</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="all-tests-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8081';
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/health`);
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ SUCCESS</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n${error.message}`;
+            }
+        }
+
+        async function createPolicy() {
+            const resultDiv = document.getElementById('create-policy-result');
+            resultDiv.textContent = 'Creating policy...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/policies`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'web-policy-' + Date.now(),
+                        name: 'Web Test Policy',
+                        description: 'Created from browser test page'
+                    })
+                });
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ SUCCESS</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n${error.message}`;
+            }
+        }
+
+        async function listPolicies() {
+            const resultDiv = document.getElementById('list-policies-result');
+            resultDiv.textContent = 'Fetching policies...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/policies`);
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ SUCCESS</span>\nFound ${data.length} policies:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n${error.message}`;
+            }
+        }
+
+        async function createAlert() {
+            const resultDiv = document.getElementById('create-alert-result');
+            resultDiv.textContent = 'Creating alert...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/alerts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'web-alert-' + Date.now(),
+                        kind: 'CONTAINER_ESCAPE',
+                        severity: 'high',
+                        message: 'Container escape detected from browser test'
+                    })
+                });
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ SUCCESS</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n${error.message}`;
+            }
+        }
+
+        async function listAlerts() {
+            const resultDiv = document.getElementById('list-alerts-result');
+            resultDiv.textContent = 'Fetching alerts...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/v1/alerts`);
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ SUCCESS</span>\nFound ${data.length} alerts:\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ ERROR</span>\n${error.message}`;
+            }
+        }
+
+        async function runAllTests() {
+            const resultDiv = document.getElementById('all-tests-result');
+            resultDiv.textContent = 'Running all tests...\n';
+            
+            const results = [];
+            
+            // Test 1: Health
+            try {
+                const r = await fetch(`${API_URL}/api/v1/health`);
+                const d = await r.json();
+                results.push('✅ Health Check: PASS');
+            } catch (e) {
+                results.push('❌ Health Check: FAIL - ' + e.message);
+            }
+            
+            // Test 2: Create Policy
+            try {
+                const r = await fetch(`${API_URL}/api/v1/policies`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'test-all-' + Date.now(),
+                        name: 'All Tests Policy',
+                        description: 'Created by all tests'
+                    })
+                });
+                await r.json();
+                results.push('✅ Create Policy: PASS');
+            } catch (e) {
+                results.push('❌ Create Policy: FAIL - ' + e.message);
+            }
+            
+            // Test 3: List Policies
+            try {
+                const r = await fetch(`${API_URL}/api/v1/policies`);
+                const d = await r.json();
+                results.push(`✅ List Policies: PASS (${d.length} policies)`);
+            } catch (e) {
+                results.push('❌ List Policies: FAIL - ' + e.message);
+            }
+            
+            // Test 4: Create Alert
+            try {
+                const r = await fetch(`${API_URL}/api/v1/alerts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'test-alert-' + Date.now(),
+                        kind: 'TEST',
+                        severity: 'medium',
+                        message: 'Test alert from all tests'
+                    })
+                });
+                await r.json();
+                results.push('✅ Create Alert: PASS');
+            } catch (e) {
+                results.push('❌ Create Alert: FAIL - ' + e.message);
+            }
+            
+            // Test 5: List Alerts
+            try {
+                const r = await fetch(`${API_URL}/api/v1/alerts`);
+                const d = await r.json();
+                results.push(`✅ List Alerts: PASS (${d.length} alerts)`);
+            } catch (e) {
+                results.push('❌ List Alerts: FAIL - ' + e.message);
+            }
+            
+            const passed = results.filter(r => r.startsWith('✅')).length;
+            const total = results.length;
+            
+            resultDiv.innerHTML = results.join('\n') + 
+                `\n\n================================\n` +
+                `Results: ${passed}/${total} tests passed\n` +
+                `${passed === total ? '🎉 All tests passed!' : '⚠️ Some tests failed'}`;
+        }
+    </script>
+</body>
+</html>

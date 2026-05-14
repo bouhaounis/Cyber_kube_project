@@ -1,5 +1,5 @@
-import { ReactNode, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Bell,
@@ -12,12 +12,14 @@ import {
   Network,
   PanelLeftClose,
   PanelLeftOpen,
+  Radar,
   FileText,
   Settings,
   Shield,
   SunMedium,
   X,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useThemeStore } from '../../stores/themeStore';
 import { apiClient } from '../../api/client';
 
@@ -36,18 +38,68 @@ function pageTitle(pathname: string): string {
 
 export function Navbar({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { theme, toggleTheme } = useThemeStore();
+
+  const notifications = [
+    { id: 'n-1', title: 'Engine heartbeat healthy', detail: 'All policy workers are responding normally.', tone: 'text-emerald-300' },
+    { id: 'n-2', title: '3 alerts need review', detail: 'Recent runtime detections are waiting in the alert queue.', tone: 'text-amber-300' },
+    { id: 'n-3', title: 'Metrics export ready', detail: 'Reports can now be exported as PDF and JSON.', tone: 'text-sky-300' },
+  ];
+
+  const commandItems = [
+    { label: 'Open dashboard', description: 'Jump to the overview workspace', href: '/' },
+    { label: 'Create policy', description: 'Open the policy management view', href: '/policies' },
+    { label: 'Review alerts', description: 'Inspect active detections and incidents', href: '/alerts' },
+    { label: 'Export reports', description: 'Open analytics and report downloads', href: '/reports' },
+    { label: 'Open settings', description: 'Adjust API and theme preferences', href: '/settings' },
+  ];
 
   const activeItem = useMemo(
     () => navigation.find((item) => item.href === location.pathname) ?? navigation[0],
     [location.pathname]
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandOpen((value) => !value);
+        setNotificationsOpen(false);
+      }
+
+      if (event.key === 'Escape') {
+        setCommandOpen(false);
+        setNotificationsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleSignOut = () => {
     apiClient.clearToken();
     window.location.assign('/login');
+  };
+
+  const handleCommandNavigate = (href: string) => {
+    setCommandOpen(false);
+    navigate(href);
+  };
+
+  const handleNotificationOpen = () => {
+    setNotificationsOpen((value) => !value);
+    setCommandOpen(false);
+  };
+
+  const markNotificationsRead = () => {
+    setNotificationsOpen(false);
+    toast.success('Notifications cleared');
   };
 
   return (
@@ -87,7 +139,9 @@ export function Navbar({ children }: { children: ReactNode }) {
             <div className="rounded-[26px] border border-sky-400/10 bg-slate-950/50 px-4 py-4">
               <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative">
-                  <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400/20 to-cyan-400/20">
+                    <Radar className="h-5 w-5 text-emerald-300" />
+                  </div>
                   <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-slate-950 bg-emerald-400" />
                 </div>
                 {!collapsed && (
@@ -223,6 +277,10 @@ export function Navbar({ children }: { children: ReactNode }) {
                 </div>
                 <button
                   type="button"
+                  onClick={() => {
+                    setCommandOpen(true);
+                    setNotificationsOpen(false);
+                  }}
                   className="topbar-button hidden cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900/80 md:inline-flex"
                 >
                   <Command className="h-4 w-4" />
@@ -230,6 +288,7 @@ export function Navbar({ children }: { children: ReactNode }) {
                 </button>
                 <button
                   type="button"
+                  onClick={handleNotificationOpen}
                   className="topbar-button relative cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-2.5 text-slate-300 hover:bg-slate-900/80"
                 >
                   <Bell className="h-5 w-5" />
@@ -252,6 +311,76 @@ export function Navbar({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+
+      {commandOpen && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center bg-slate-950/55 px-4 pt-24 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
+          <div
+            className="surface-card-strong w-full max-w-2xl p-5 md:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-sky-300/75">Quick command</p>
+                <h3 className="mt-2 text-2xl font-semibold text-white">Jump through the workspace</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCommandOpen(false)}
+                className="topbar-button rounded-2xl border border-white/10 bg-white/5 p-2.5 text-slate-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {commandItems.map((item) => (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => handleCommandNavigate(item.href)}
+                  className="list-card flex w-full items-center justify-between gap-4 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="mt-1 text-sm text-slate-400">{item.description}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notificationsOpen && (
+        <div className="fixed right-4 top-24 z-[65] w-[min(92vw,380px)] md:right-6">
+          <div className="surface-card-strong p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-sky-300/75">Notifications</p>
+                <h3 className="mt-1 text-xl font-semibold text-white">Operations inbox</h3>
+              </div>
+              <button type="button" onClick={markNotificationsRead} className="action-button px-3 py-2 text-xs">
+                Clear
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {notifications.map((item) => (
+                <div key={item.id} className="list-card">
+                  <div className="flex items-start gap-3">
+                    <span className={`mt-1 h-2.5 w-2.5 rounded-full bg-current ${item.tone}`} />
+                    <div>
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-400">{item.detail}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

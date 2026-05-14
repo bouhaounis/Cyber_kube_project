@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Lock, Shield, User } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { useThemeStore } from '../stores/themeStore';
 
 type LocationState = {
   from?: {
@@ -13,6 +14,7 @@ type LocationState = {
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme } = useThemeStore();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,8 +40,25 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.25),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(139,92,246,0.24),transparent_30%),linear-gradient(180deg,#040816_0%,#020617_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:56px_56px] opacity-50" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            theme === 'dark'
+              ? 'radial-gradient(circle at top left, rgba(59,130,246,0.25), transparent 30%), radial-gradient(circle at 80% 20%, rgba(139,92,246,0.24), transparent 30%), linear-gradient(180deg, #040816 0%, #020617 100%)'
+              : 'radial-gradient(circle at top left, rgba(59,130,246,0.14), transparent 30%), radial-gradient(circle at 80% 20%, rgba(139,92,246,0.12), transparent 30%), linear-gradient(180deg, #f6f9ff 0%, #eaf2ff 100%)',
+        }}
+      />
+      <div
+        className="absolute inset-0 bg-[size:56px_56px]"
+        style={{
+          backgroundImage:
+            theme === 'dark'
+              ? 'linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px)'
+              : 'linear-gradient(90deg, rgba(15,23,42,0.04) 1px, transparent 1px), linear-gradient(rgba(15,23,42,0.04) 1px, transparent 1px)',
+          opacity: theme === 'dark' ? 0.5 : 0.75,
+        }}
+      />
 
       <div className="relative grid w-full max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="surface-card-strong hidden p-10 lg:block">

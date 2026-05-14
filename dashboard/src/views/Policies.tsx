@@ -178,7 +178,8 @@ export default function Policies() {
               setIsModalOpen(false);
               setEditingPolicy(null);
             } catch (error) {
-              toast.error('Failed to save policy');
+              const message = error instanceof Error ? error.message : 'Failed to save policy';
+              toast.error(message);
             }
           }}
         />
@@ -220,6 +221,9 @@ function PolicyModal({
               className="app-input"
               disabled={!!policy}
             />
+            <p className="mt-2 text-xs leading-6 text-slate-500">
+              Optional. You can leave this blank and the API will generate a valid ID automatically.
+            </p>
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">Name</label>

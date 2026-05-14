@@ -2,7 +2,6 @@ package models
 
 import (
 	"time"
-	"gorm.io/gorm"
 )
 
 // Policy represents a security policy
@@ -14,7 +13,6 @@ type Policy struct {
 	Rules       string    `gorm:"type:text" json:"rules"` // JSON string
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // Alert represents a security alert

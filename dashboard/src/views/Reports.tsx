@@ -1,33 +1,155 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Download, FileText, Sparkles, TimerReset } from 'lucide-react';
+import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
 import { MetricsChart } from '../components/charts/MetricsChart';
+
+const RANGE_IN_DAYS: Record<string, number> = {
+  '7d': 7,
+  '30d': 30,
+  '60d': 60,
+  '90d': 90,
+};
+
+const BASELINE_EVENTS = Array.from({ length: 90 }, (_, index) => {
+  const day = index + 1;
+  const events = 54 + (day % 9) * 7 + ((day * 13) % 19);
+  const blocked = Math.max(8, Math.round(events * (0.16 + (day % 5) * 0.018)));
+  return {
+    name: `Day ${day}`,
+    events,
+    blocked,
+  };
+});
 
 export default function Reports() {
   const [dateRange, setDateRange] = useState('7d');
 
-  const securityEvents = Array.from({ length: 30 }, (_, i) => ({
-    name: `Day ${i + 1}`,
-    events: Math.floor(Math.random() * 100),
-    blocked: Math.floor(Math.random() * 20),
-  }));
+  const securityEvents = useMemo(() => {
+    const days = RANGE_IN_DAYS[dateRange] ?? 7;
+    return BASELINE_EVENTS.slice(-days);
+  }, [dateRange]);
 
-  const threatTypes = [
-    { name: 'Container Escape', value: 45, color: '#fb7185' },
-    { name: 'Network Scan', value: 30, color: '#f59e0b' },
-    { name: 'Crypto Mining', value: 15, color: '#38bdf8' },
-    { name: 'Privilege Escalation', value: 10, color: '#8b5cf6' },
-  ];
+  const totalEvents = useMemo(() => securityEvents.reduce((sum, item) => sum + item.events, 0), [securityEvents]);
+  const totalBlocked = useMemo(() => securityEvents.reduce((sum, item) => sum + item.blocked, 0), [securityEvents]);
+  const falsePositives = useMemo(() => Math.max(4, Math.round(totalEvents * 0.011)), [totalEvents]);
+  const responseTime = useMemo(() => (0.62 + securityEvents.length / 180).toFixed(1), [securityEvents.length]);
+  const blockedRate = useMemo(() => Math.round((totalBlocked / totalEvents) * 100), [totalBlocked, totalEvents]);
 
-  const summaryCards = [
-    { label: 'Total events', value: '1,234', note: '+12% from last period', icon: Sparkles, tone: 'text-sky-300' },
-    { label: 'Threats blocked', value: '89', note: '+5% from last period', icon: FileText, tone: 'text-emerald-300' },
-    { label: 'False positives', value: '12', note: '-3% from last period', icon: TimerReset, tone: 'text-rose-300' },
-    { label: 'Response time', value: '0.8s', note: '-15% from last period', icon: Download, tone: 'text-violet-300' },
-  ];
+  const threatTypes = useMemo(() => {
+    const rangeWeight = securityEvents.length;
+    return [
+      { name: 'Container Escape', value: Math.round(28 + rangeWeight * 0.18), color: '#fb7185' },
+      { name: 'Network Scan', value: Math.round(22 + rangeWeight * 0.12), color: '#f59e0b' },
+      { name: 'Crypto Mining', value: Math.round(12 + rangeWeight * 0.07), color: '#38bdf8' },
+      { name: 'Privilege Escalation', value: Math.round(8 + rangeWeight * 0.05), color: '#8b5cf6' },
+    ];
+  }, [securityEvents.length]);
 
-  const handleExport = (format: 'pdf' | 'csv') => {
-    toast.success(`Exporting report as ${format.toUpperCase()}...`);
+  const summaryCards = useMemo(
+    () => [
+      { label: 'Total events', value: totalEvents.toLocaleString(), note: `${securityEvents.length}-day reporting window`, icon: Sparkles, tone: 'text-sky-300' },
+      { label: 'Threats blocked', value: totalBlocked.toLocaleString(), note: `${blockedRate}% of detected activity`, icon: FileText, tone: 'text-emerald-300' },
+      { label: 'False positives', value: falsePositives.toLocaleString(), note: 'Estimated analyst-reviewed noise', icon: TimerReset, tone: 'text-rose-300' },
+      { label: 'Response time', value: `${responseTime}s`, note: 'Median policy reaction time', icon: Download, tone: 'text-violet-300' },
+    ],
+    [blockedRate, falsePositives, responseTime, securityEvents.length, totalBlocked, totalEvents]
+  );
+
+  const reportPayload = {
+    generatedAt: new Date().toISOString(),
+    dateRange,
+    summary: summaryCards.map(({ label, value, note }) => ({ label, value, note })),
+    threatTypes,
+    securityEvents,
+  };
+
+  const downloadBlob = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async (format: 'pdf' | 'json') => {
+    try {
+      if (format === 'json') {
+        downloadBlob(
+          new Blob([JSON.stringify(reportPayload, null, 2)], { type: 'application/json' }),
+          `cyber-kube-report-${dateRange}.json`
+        );
+        toast.success('JSON report downloaded');
+        return;
+      }
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'pt',
+        format: 'a4',
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let y = 48;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('Cyber-Kube Security Report', 40, y);
+
+      y += 22;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      doc.text(`Generated: ${new Date(reportPayload.generatedAt).toLocaleString()}`, 40, y);
+      y += 16;
+      doc.text(`Range: ${dateRange}`, 40, y);
+
+      y += 28;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Executive Summary', 40, y);
+
+      y += 18;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      for (const card of summaryCards) {
+        const line = `${card.label}: ${card.value} (${card.note})`;
+        const lines = doc.splitTextToSize(line, pageWidth - 80);
+        doc.text(lines, 40, y);
+        y += lines.length * 14 + 6;
+      }
+
+      y += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Threat Distribution', 40, y);
+
+      y += 18;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      for (const threat of threatTypes) {
+        doc.text(`${threat.name}: ${threat.value}%`, 40, y);
+        y += 16;
+      }
+
+      y += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Event Trend Snapshot', 40, y);
+
+      y += 18;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      for (const event of securityEvents.slice(0, 12)) {
+        doc.text(`${event.name}: ${event.events} events, ${event.blocked} blocked`, 40, y);
+        y += 16;
+      }
+
+      doc.save(`cyber-kube-report-${dateRange}.pdf`);
+      toast.success('PDF report downloaded');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown export error';
+      toast.error(`Export failed: ${message}`);
+    }
   };
 
   return (
@@ -44,15 +166,16 @@ export default function Reports() {
           <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} className="app-input min-w-[180px]">
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
+            <option value="60d">Last 60 days</option>
             <option value="90d">Last 90 days</option>
           </select>
           <button onClick={() => handleExport('pdf')} className="action-button action-button-primary">
             <FileText className="h-4 w-4" />
             Export PDF
           </button>
-          <button onClick={() => handleExport('csv')} className="action-button">
+          <button onClick={() => handleExport('json')} className="action-button">
             <Download className="h-4 w-4" />
-            Export CSV
+            Export JSON
           </button>
         </div>
       </section>

@@ -12,6 +12,12 @@ type Config struct {
 	KubeconfigPath string
 	JWTSecret      string
 	LogLevel       string
+	SMTPHost       string
+	SMTPPort       string
+	SMTPUsername   string
+	SMTPPassword   string
+	SMTPFrom       string
+	SMTPTo         string
 }
 
 func Load() *Config {
@@ -23,6 +29,12 @@ func Load() *Config {
 		KubeconfigPath: getEnv("KUBECONFIG", ""),
 		JWTSecret:      getEnv("JWT_SECRET", "change-me-in-production"),
 		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		SMTPHost:       getEnv("SMTP_HOST", ""),
+		SMTPPort:       getEnv("SMTP_PORT", "587"),
+		SMTPUsername:   getEnv("SMTP_USERNAME", ""),
+		SMTPPassword:   getEnv("SMTP_PASSWORD", ""),
+		SMTPFrom:       getEnv("SMTP_FROM", ""),
+		SMTPTo:         getEnv("SMTP_TO", ""),
 	}
 }
 

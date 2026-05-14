@@ -16,3 +16,10 @@ export interface Alert {
 export interface HealthStatus {
   status: string;
 }
+
+export interface AppSettings {
+  email_notifications: boolean;
+  notification_email: string;
+  auto_remediation: boolean;
+  log_retention_days: number;
+}

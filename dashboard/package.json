@@ -9,18 +9,19 @@
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
-    "zustand": "^4.5.5",
+    "@headlessui/react": "^2.2.0",
     "@tanstack/react-query": "^5.62.0",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "three": "^0.170.0",
+    "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.28.0",
     "recharts": "^2.15.0",
-    "lucide-react": "^0.468.0",
-    "date-fns": "^4.1.0",
-    "react-hot-toast": "^2.4.1",
-    "@headlessui/react": "^2.2.0"
+    "three": "^0.170.0",
+    "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

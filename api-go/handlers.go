@@ -1,15 +1,29 @@
 package main
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/cyber-kube/api-go/internal/config"
 	"github.com/cyber-kube/api-go/internal/database"
 	"github.com/cyber-kube/api-go/internal/models"
+	"github.com/cyber-kube/api-go/pkg/notify"
 	"github.com/cyber-kube/api-go/pkg/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
+
+var appConfig *config.Config
+
+type SettingsResponse struct {
+	EmailNotifications bool   `json:"email_notifications"`
+	NotificationEmail  string `json:"notification_email"`
+	AutoRemediation    bool   `json:"auto_remediation"`
+	LogRetentionDays   int    `json:"log_retention_days"`
+}
 
 func registerRoutes(r *gin.RouterGroup, wsManager *websocket.Manager) {
 	// Policies CRUD
@@ -23,6 +37,9 @@ func registerRoutes(r *gin.RouterGroup, wsManager *websocket.Manager) {
 	r.GET("/alerts", listAlerts)
 	r.POST("/alerts", createAlert)
 	r.PUT("/alerts/:id/resolve", resolveAlert)
+	r.GET("/settings", getSettings)
+	r.PUT("/settings", updateSettings)
+	r.POST("/settings/test-email", sendTestEmail)
 
 	// Events (for WebSocket broadcasting)
 	r.POST("/events", func(c *gin.Context) {
@@ -60,6 +77,9 @@ func createPolicy(c *gin.Context) {
 
 	// Try database first, fallback to in-memory
 	if database.DB != nil {
+		if _, err := uuid.Parse(p.ID); err != nil {
+			p.ID = uuid.New().String()
+		}
 		policy := models.Policy{
 			ID:          p.ID,
 			Name:        p.Name,
@@ -204,10 +224,12 @@ func listAlerts(c *gin.Context) {
 		result := make([]Alert, len(dbAlerts))
 		for i, a := range dbAlerts {
 			result[i] = Alert{
-				ID:        string(rune(a.ID)),
+				ID:        strconv.FormatUint(uint64(a.ID), 10),
 				Kind:      a.Kind,
 				Severity:  a.Severity,
 				Message:   a.Message,
+				Source:    a.Source,
+				Namespace: a.Namespace,
 				CreatedAt: a.CreatedAt,
 			}
 		}
@@ -236,18 +258,30 @@ func createAlert(c *gin.Context) {
 			Kind:      a.Kind,
 			Severity:  a.Severity,
 			Message:   a.Message,
+			Source:    a.Source,
+			Namespace: a.Namespace,
 			CreatedAt: a.CreatedAt,
 		}
 		if err := database.DB.Create(&alert).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		a.ID = string(rune(alert.ID))
+		a.ID = strconv.FormatUint(uint64(alert.ID), 10)
 
 		// Broadcast via WebSocket
 		if wsManager != nil {
 			wsManager.BroadcastAlert(alert)
 		}
+		maybeSendAlertNotification(models.Alert{
+			ID:        alert.ID,
+			Kind:      alert.Kind,
+			Severity:  alert.Severity,
+			Message:   alert.Message,
+			Source:    alert.Source,
+			Namespace: alert.Namespace,
+			CreatedAt: alert.CreatedAt,
+			UpdatedAt: alert.UpdatedAt,
+		})
 		c.JSON(http.StatusCreated, a)
 		return
 	}
@@ -263,6 +297,91 @@ func createAlert(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusCreated, a)
+}
+
+func getSettings(c *gin.Context) {
+	settings, err := loadSettings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, SettingsResponse{
+		EmailNotifications: settings.EmailNotifications,
+		NotificationEmail:  settings.NotificationEmail,
+		AutoRemediation:    settings.AutoRemediation,
+		LogRetentionDays:   settings.LogRetentionDays,
+	})
+}
+
+func updateSettings(c *gin.Context) {
+	var payload SettingsResponse
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	settings, err := loadSettings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	settings.EmailNotifications = payload.EmailNotifications
+	settings.NotificationEmail = payload.NotificationEmail
+	settings.AutoRemediation = payload.AutoRemediation
+	if payload.LogRetentionDays > 0 {
+		settings.LogRetentionDays = payload.LogRetentionDays
+	}
+
+	if database.DB != nil {
+		if err := database.DB.Save(&settings).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, SettingsResponse{
+		EmailNotifications: settings.EmailNotifications,
+		NotificationEmail:  settings.NotificationEmail,
+		AutoRemediation:    settings.AutoRemediation,
+		LogRetentionDays:   settings.LogRetentionDays,
+	})
+}
+
+func sendTestEmail(c *gin.Context) {
+	settings, err := loadSettings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !settings.EmailNotifications {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email notifications are disabled"})
+		return
+	}
+
+	recipient := settings.NotificationEmail
+	if recipient == "" && appConfig != nil {
+		recipient = appConfig.SMTPTo
+	}
+	if recipient == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "notification email is required"})
+		return
+	}
+
+	err = notify.SendEmail(
+		appConfig,
+		recipient,
+		"Cyber-Kube test email",
+		"Cyber-Kube email notifications are configured correctly.\r\n\r\nThis is a test message from the Settings page.",
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "test email sent", "to": recipient})
 }
 
 func resolveAlert(c *gin.Context) {
@@ -296,5 +415,52 @@ type Alert struct {
 	Kind      string    `json:"kind"`
 	Severity  string    `json:"severity"`
 	Message   string    `json:"message"`
+	Source    string    `json:"source"`
+	Namespace string    `json:"namespace"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+func loadSettings() (database.AppSettings, error) {
+	defaultSettings := database.AppSettings{
+		ID:                 "default",
+		EmailNotifications: false,
+		NotificationEmail:  "",
+		AutoRemediation:    true,
+		LogRetentionDays:   30,
+	}
+
+	if database.DB == nil {
+		return defaultSettings, nil
+	}
+
+	var settings database.AppSettings
+	err := database.DB.First(&settings, "id = ?", "default").Error
+	if err == nil {
+		return settings, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return database.AppSettings{}, err
+	}
+
+	if createErr := database.DB.Create(&defaultSettings).Error; createErr != nil {
+		return database.AppSettings{}, createErr
+	}
+
+	return defaultSettings, nil
+}
+
+func maybeSendAlertNotification(alert models.Alert) {
+	settings, err := loadSettings()
+	if err != nil || !settings.EmailNotifications {
+		return
+	}
+
+	_ = notify.SendAlertEmail(appConfig, settings, notify.AlertPayload{
+		ID:        strconv.FormatUint(uint64(alert.ID), 10),
+		Kind:      alert.Kind,
+		Severity:  alert.Severity,
+		Message:   alert.Message,
+		Source:    alert.Source,
+		Namespace: alert.Namespace,
+	})
 }

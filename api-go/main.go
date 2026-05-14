@@ -22,6 +22,7 @@ var wsManager *websocket.Manager
 
 func main() {
 	cfg := config.Load()
+	appConfig = cfg
 
 	// Initialize database (optional, will use in-memory if not available)
 	database.Connect(cfg)

@@ -1,6 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
-
 const TOKEN_STORAGE_KEY = 'ksoc_token';
+const API_URL_STORAGE_KEY = 'ksoc_api_url';
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081';
 
 type LoginResponse = {
   token?: string;
@@ -9,6 +9,18 @@ type LoginResponse = {
 
 function getToken(): string | null {
   return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+function normalizeApiUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
+function getApiUrl(): string {
+  const stored = localStorage.getItem(API_URL_STORAGE_KEY);
+  if (stored) {
+    return normalizeApiUrl(stored);
+  }
+  return normalizeApiUrl(DEFAULT_API_URL);
 }
 
 function clearTokenAndRedirect(): void {
@@ -30,7 +42,7 @@ async function request<T>(endpoint: string, init: RequestInit = {}): Promise<T> 
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const response = await fetch(`${getApiUrl()}${endpoint}`, {
     ...init,
     headers,
   });
@@ -41,7 +53,8 @@ async function request<T>(endpoint: string, init: RequestInit = {}): Promise<T> 
   }
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const message = await extractErrorMessage(response);
+    throw new Error(message || `HTTP error! status: ${response.status}`);
   }
 
   if (response.status === 204) {
@@ -75,7 +88,7 @@ export const apiClient = {
   },
 
   async login(username: string, password: string): Promise<string> {
-    const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+    const response = await fetch(`${getApiUrl()}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -87,7 +100,8 @@ export const apiClient = {
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const message = await extractErrorMessage(response);
+      throw new Error(message || `HTTP error! status: ${response.status}`);
     }
 
     const data: LoginResponse = await response.json();
@@ -102,5 +116,16 @@ export const apiClient = {
   },
 
   getToken,
+  getApiUrl,
+  setApiUrl: (value: string) => localStorage.setItem(API_URL_STORAGE_KEY, normalizeApiUrl(value)),
   clearToken: () => localStorage.removeItem(TOKEN_STORAGE_KEY),
 };
+
+async function extractErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const data = (await response.json()) as { error?: string; message?: string };
+    return data.error ?? data.message ?? null;
+  } catch {
+    return null;
+  }
+}

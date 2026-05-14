@@ -33,10 +33,20 @@ type Alert struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type AppSettings struct {
+	ID                 string    `gorm:"primaryKey" json:"id"`
+	EmailNotifications bool      `gorm:"default:false" json:"email_notifications"`
+	NotificationEmail  string    `json:"notification_email"`
+	AutoRemediation    bool      `gorm:"default:true" json:"auto_remediation"`
+	LogRetentionDays   int       `gorm:"default:30" json:"log_retention_days"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
 var DB *gorm.DB
 
 func (p *Policy) BeforeCreate(_ *gorm.DB) error {
-	if p.ID == "" {
+	if _, err := uuid.Parse(p.ID); err != nil {
 		p.ID = uuid.NewString()
 	}
 	return nil
@@ -45,6 +55,13 @@ func (p *Policy) BeforeCreate(_ *gorm.DB) error {
 func (a *Alert) BeforeCreate(_ *gorm.DB) error {
 	if a.ID == "" {
 		a.ID = uuid.NewString()
+	}
+	return nil
+}
+
+func (s *AppSettings) BeforeCreate(_ *gorm.DB) error {
+	if s.ID == "" {
+		s.ID = "default"
 	}
 	return nil
 }
@@ -60,7 +77,7 @@ func Connect(cfg *config.Config) {
 		panic(fmt.Sprintf("failed to connect to database: %v", err))
 	}
 
-	if err := db.AutoMigrate(&Policy{}, &Alert{}); err != nil {
+	if err := db.AutoMigrate(&Policy{}, &Alert{}, &AppSettings{}); err != nil {
 		panic(fmt.Sprintf("failed to migrate database: %v", err))
 	}
 

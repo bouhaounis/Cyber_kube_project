@@ -1,19 +1,76 @@
-import { ReactNode, useState } from 'react';
-import { Bell, Database, Network, Save, Shield } from 'lucide-react';
+import { ReactNode, useEffect, useState } from 'react';
+import { Bell, Database, MailCheck, Network, Save, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useThemeStore } from '../stores/themeStore';
+import { apiClient } from '../api/client';
+import type { AppSettings } from '../api/types';
 
 export default function Settings() {
   const { theme, setTheme } = useThemeStore();
   const [settings, setSettings] = useState({
-    notifications: true,
+    notifications: false,
+    notificationEmail: '',
     autoRemediation: true,
     logRetention: '30',
-    apiUrl: 'http://localhost:8081',
+    apiUrl: apiClient.getApiUrl(),
   });
+  const [saving, setSaving] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
 
-  const handleSave = () => {
-    toast.success('Settings saved successfully');
+  useEffect(() => {
+    void loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await apiClient.get<AppSettings>('/api/v1/settings');
+      setSettings((current) => ({
+        ...current,
+        notifications: data.email_notifications,
+        notificationEmail: data.notification_email,
+        autoRemediation: data.auto_remediation,
+        logRetention: String(data.log_retention_days),
+      }));
+    } catch (error) {
+      console.error('Failed to load settings', error);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveSettings();
+      apiClient.setApiUrl(settings.apiUrl);
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save settings';
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    return apiClient.put<AppSettings>('/api/v1/settings', {
+      email_notifications: settings.notifications,
+      notification_email: settings.notificationEmail,
+      auto_remediation: settings.autoRemediation,
+      log_retention_days: Number(settings.logRetention) || 30,
+    });
+  };
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true);
+    try {
+      await saveSettings();
+      await apiClient.post<{ message: string; to: string }>('/api/v1/settings/test-email', {});
+      toast.success('Test email sent');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send test email';
+      toast.error(message);
+    } finally {
+      setTestingEmail(false);
+    }
   };
 
   return (
@@ -44,6 +101,25 @@ export default function Settings() {
               checked={settings.notifications}
               onChange={(checked) => setSettings({ ...settings, notifications: checked })}
             />
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-300">Notification email</label>
+              <input
+                type="email"
+                value={settings.notificationEmail}
+                onChange={(e) => setSettings({ ...settings, notificationEmail: e.target.value })}
+                className="app-input"
+                placeholder="soc-team@example.com"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleTestEmail()}
+              disabled={testingEmail || !settings.notifications}
+              className="action-button w-full"
+            >
+              <MailCheck className="h-4 w-4" />
+              {testingEmail ? 'Sending test...' : 'Send test email'}
+            </button>
             <ToggleRow
               label="Auto-remediation on threats"
               checked={settings.autoRemediation}
@@ -78,9 +154,9 @@ export default function Settings() {
       </section>
 
       <section className="flex justify-end">
-        <button onClick={handleSave} className="action-button action-button-primary">
+        <button onClick={() => void handleSave()} disabled={saving} className="action-button action-button-primary">
           <Save className="h-4 w-4" />
-          Save settings
+          {saving ? 'Saving...' : 'Save settings'}
         </button>
       </section>
     </div>

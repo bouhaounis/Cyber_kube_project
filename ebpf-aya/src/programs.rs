@@ -4,7 +4,7 @@ use aya_ebpf::{
     macros::{map, tracepoint, uprobe, uretprobe, xdp},
     maps::{HashMap, PerfEventArray, Queue},
     programs::{ProbeContext, RetProbeContext, TracePointContext, XdpContext},
-    BpfContext,
+    EbpfContext,
 };
 use aya_log_ebpf::info;
 use core::cmp;

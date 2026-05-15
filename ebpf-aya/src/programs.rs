@@ -322,8 +322,8 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
     }
 
     unsafe {
-        let ip_header = data as *const u8;
-        let version = (*ip_header >> 4) & 0x0F;
+        let version_ihl = read_packet_byte(data);
+        let version = (version_ihl >> 4) & 0x0F;
 
         if version != 4 {
             return Ok(xdp_action::XDP_PASS);
@@ -335,10 +335,10 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
         }
 
         let src_ip = u32::from_be_bytes([
-            *src_ip_ptr,
-            *src_ip_ptr.add(1),
-            *src_ip_ptr.add(2),
-            *src_ip_ptr.add(3),
+            read_packet_byte(src_ip_ptr),
+            read_packet_byte(src_ip_ptr + 1),
+            read_packet_byte(src_ip_ptr + 2),
+            read_packet_byte(src_ip_ptr + 3),
         ]);
 
         if IP_BLACKLIST.get(&src_ip).is_some() {
@@ -358,14 +358,16 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
             return Ok(xdp_action::XDP_PASS);
         }
 
-        let protocol = *ip_header.add(9);
+        let protocol = read_packet_byte(data + 9);
         if protocol == 6 || protocol == 17 {
-            let header_len = (*ip_header & 0x0F) * 4;
+            let header_len = (version_ihl & 0x0F) * 4;
             let tcp_udp_start = data + header_len as usize;
 
             if tcp_udp_start + 4 <= data_end {
-                let src_port =
-                    u16::from_be_bytes([*tcp_udp_start, *tcp_udp_start.add(1)]);
+                let src_port = u16::from_be_bytes([
+                    read_packet_byte(tcp_udp_start),
+                    read_packet_byte(tcp_udp_start + 1),
+                ]);
 
                 if PORT_BLACKLIST.get(&src_port).is_some() {
                     let event = NetworkEvent {
@@ -384,6 +386,11 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
 
         Ok(xdp_action::XDP_PASS)
     }
+}
+
+#[inline(always)]
+unsafe fn read_packet_byte(offset: usize) -> u8 {
+    *(offset as *const u8)
 }
 
 #[panic_handler]

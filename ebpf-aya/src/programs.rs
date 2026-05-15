@@ -2,12 +2,12 @@ use aya_ebpf::{
     bindings::xdp_action,
     helpers::{bpf_get_current_pid_tgid, bpf_ktime_get_ns, bpf_probe_read_user_buf},
     macros::{map, tracepoint, uprobe, uretprobe, xdp},
-    maps::{HashMap, PerfEventArray, Queue},
+    maps::{HashMap, PerCpuArray, PerfEventArray, Queue},
     programs::{ProbeContext, RetProbeContext, TracePointContext, XdpContext},
     EbpfContext,
 };
 use aya_log_ebpf::info;
-use core::cmp;
+use core::{cmp, slice};
 
 const TLS_MAX_CAPTURE_BYTES: usize = 512;
 
@@ -96,6 +96,13 @@ static mut PORT_BLACKLIST: HashMap<u16, u8> = HashMap::with_max_entries(256, 0);
 #[map(name = "EVENT_QUEUE")]
 static mut EVENT_QUEUE: Queue<SecurityEvent> = Queue::with_max_entries(1024, 0);
 
+#[map(name = "SECURITY_EVENT_SCRATCH")]
+static mut SECURITY_EVENT_SCRATCH: PerCpuArray<SecurityEvent> =
+    PerCpuArray::with_max_entries(1, 0);
+
+#[map(name = "TLS_EVENT_SCRATCH")]
+static mut TLS_EVENT_SCRATCH: PerCpuArray<TlsEvent> = PerCpuArray::with_max_entries(1, 0);
+
 #[map(name = "TLS_READ_STATE")]
 static mut TLS_READ_STATE: HashMap<u32, TlsBufferState> = HashMap::with_max_entries(4096, 0);
 
@@ -137,21 +144,32 @@ unsafe fn check_container_escape(ctx: &TracePointContext) -> bool {
 
 #[inline]
 unsafe fn send_security_event(ctx: &TracePointContext, event_type: u32, data: &[u8]) {
-    let event = SecurityEvent {
-        event_type,
-        pid: u64::from(ctx.pid()),
-        tgid: u64::from(ctx.tgid()),
-        uid: ctx.uid(),
-        gid: ctx.gid(),
-        timestamp: bpf_ktime_get_ns(),
-        data_len: data.len() as u32,
-        data: {
-            let mut buf = [0u8; 256];
-            let copy_len = cmp::min(data.len(), 256);
-            buf[..copy_len].copy_from_slice(&data[..copy_len]);
-            buf
-        },
+    let Some(event_ptr) = SECURITY_EVENT_SCRATCH.get_ptr_mut(0) else {
+        return;
     };
+    let event = &mut *event_ptr;
+
+    event.event_type = event_type;
+    event.pid = u64::from(ctx.pid());
+    event.tgid = u64::from(ctx.tgid());
+    event.uid = ctx.uid();
+    event.gid = ctx.gid();
+    event.timestamp = bpf_ktime_get_ns();
+
+    let copy_len = cmp::min(data.len(), 256);
+    event.data_len = copy_len as u32;
+
+    let mut i = 0;
+    while i < 256 {
+        event.data[i] = 0;
+        i += 1;
+    }
+
+    i = 0;
+    while i < copy_len {
+        event.data[i] = data[i];
+        i += 1;
+    }
 
     let _ = SECURITY_EVENTS.output(ctx, &event, 0);
     let _ = EVENT_QUEUE.push(&event, 0);
@@ -159,7 +177,7 @@ unsafe fn send_security_event(ctx: &TracePointContext, event_type: u32, data: &[
 
 #[inline]
 fn current_pid_and_tid() -> (u32, u32) {
-    let pid_tgid = unsafe { bpf_get_current_pid_tgid() };
+    let pid_tgid = bpf_get_current_pid_tgid();
     ((pid_tgid >> 32) as u32, pid_tgid as u32)
 }
 
@@ -210,21 +228,23 @@ unsafe fn submit_tls_event(
         TLS_MAX_CAPTURE_BYTES,
     );
 
-    let mut event = TlsEvent {
-        pid,
-        tid,
-        timestamp_ns: bpf_ktime_get_ns(),
-        direction: state.direction,
-        _reserved: [0; 3],
-        bytes_transferred,
-        captured_len: capture_len as u32,
-        payload: [0; TLS_MAX_CAPTURE_BYTES],
+    let Some(event_ptr) = TLS_EVENT_SCRATCH.get_ptr_mut(0) else {
+        return 0;
     };
+    let event = &mut *event_ptr;
+
+    event.pid = pid;
+    event.tid = tid;
+    event.timestamp_ns = bpf_ktime_get_ns();
+    event.direction = state.direction;
+    event._reserved = [0; 3];
+    event.bytes_transferred = bytes_transferred;
+    event.captured_len = capture_len as u32;
 
     if capture_len > 0
         && bpf_probe_read_user_buf(
             state.buf_ptr as *const u8,
-            &mut event.payload[..capture_len],
+            slice::from_raw_parts_mut(event.payload.as_mut_ptr(), capture_len),
         )
         .is_err()
     {

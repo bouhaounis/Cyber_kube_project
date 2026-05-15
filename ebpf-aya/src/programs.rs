@@ -73,13 +73,13 @@ const EVENT_CONTAINER_ESCAPE: u32 = 4;
 const EVENT_BIND: u32 = 5;
 
 #[map(name = "SECURITY_EVENTS")]
-static mut SECURITY_EVENTS: PerfEventArray<SecurityEvent> = PerfEventArray::with_max_entries(4096, 0);
+static mut SECURITY_EVENTS: PerfEventArray<SecurityEvent> = PerfEventArray::new(0);
 
 #[map(name = "NETWORK_EVENTS")]
-static mut NETWORK_EVENTS: PerfEventArray<NetworkEvent> = PerfEventArray::with_max_entries(2048, 0);
+static mut NETWORK_EVENTS: PerfEventArray<NetworkEvent> = PerfEventArray::new(0);
 
 #[map(name = "TLS_EVENTS")]
-static mut TLS_EVENTS: PerfEventArray<TlsEvent> = PerfEventArray::with_max_entries(1024, 0);
+static mut TLS_EVENTS: PerfEventArray<TlsEvent> = PerfEventArray::new(0);
 
 #[map(name = "CONTAINER_MAP")]
 static mut CONTAINER_MAP: HashMap<u64, ContainerInfo> = HashMap::with_max_entries(1024, 0);
@@ -122,12 +122,13 @@ unsafe fn is_in_container(pid: u64) -> bool {
 unsafe fn check_container_escape(ctx: &TracePointContext) -> bool {
     let pid = ctx.pid();
     let tgid = ctx.tgid();
+    let tgid_key = u64::from(tgid);
 
-    if !is_in_container(tgid) {
+    if !is_in_container(tgid_key) {
         return false;
     }
 
-    if CONTAINER_MAP.get(&tgid).is_some() && pid != tgid {
+    if CONTAINER_MAP.get(&tgid_key).is_some() && pid != tgid {
         return true;
     }
 
@@ -138,8 +139,8 @@ unsafe fn check_container_escape(ctx: &TracePointContext) -> bool {
 unsafe fn send_security_event(ctx: &TracePointContext, event_type: u32, data: &[u8]) {
     let event = SecurityEvent {
         event_type,
-        pid: ctx.pid(),
-        tgid: ctx.tgid(),
+        pid: u64::from(ctx.pid()),
+        tgid: u64::from(ctx.tgid()),
         uid: ctx.uid(),
         gid: ctx.gid(),
         timestamp: bpf_ktime_get_ns(),
@@ -234,7 +235,7 @@ unsafe fn submit_tls_event(
     0
 }
 
-#[tracepoint(name = "syscalls")]
+#[tracepoint(category = "syscalls", name = "sys_enter_execve")]
 pub fn trace_execve(ctx: TracePointContext) -> u32 {
     unsafe {
         let pid = ctx.pid();
@@ -251,60 +252,60 @@ pub fn trace_execve(ctx: TracePointContext) -> u32 {
     }
 }
 
-#[tracepoint(name = "syscalls")]
+#[tracepoint(category = "syscalls", name = "sys_enter_connect")]
 pub fn trace_connect(ctx: TracePointContext) -> u32 {
     unsafe {
         let pid = ctx.pid();
-        if is_in_container(pid) {
+        if is_in_container(u64::from(pid)) {
             send_security_event(&ctx, EVENT_CONNECT, b"connect_from_container");
         }
         0
     }
 }
 
-#[tracepoint(name = "syscalls")]
+#[tracepoint(category = "syscalls", name = "sys_enter_openat")]
 pub fn trace_openat(ctx: TracePointContext) -> u32 {
     unsafe {
         let pid = ctx.pid();
-        if is_in_container(pid) {
+        if is_in_container(u64::from(pid)) {
             send_security_event(&ctx, EVENT_OPEN, b"open_from_container");
         }
         0
     }
 }
 
-#[tracepoint(name = "syscalls")]
+#[tracepoint(category = "syscalls", name = "sys_enter_bind")]
 pub fn trace_bind(ctx: TracePointContext) -> u32 {
     unsafe {
         let pid = ctx.pid();
-        if is_in_container(pid) {
+        if is_in_container(u64::from(pid)) {
             send_security_event(&ctx, EVENT_BIND, b"bind_from_container");
         }
         0
     }
 }
 
-#[uprobe(name = "tls_ssl_read_enter")]
+#[uprobe]
 pub fn tls_ssl_read_enter(ctx: ProbeContext) -> u32 {
     unsafe { stash_tls_buffer(&mut TLS_READ_STATE, &ctx, 0) }
 }
 
-#[uretprobe(name = "tls_ssl_read_return")]
+#[uretprobe]
 pub fn tls_ssl_read_return(ctx: RetProbeContext) -> u32 {
     unsafe { submit_tls_event(&mut TLS_READ_STATE, &ctx) }
 }
 
-#[uprobe(name = "tls_ssl_write_enter")]
+#[uprobe]
 pub fn tls_ssl_write_enter(ctx: ProbeContext) -> u32 {
     unsafe { stash_tls_buffer(&mut TLS_WRITE_STATE, &ctx, 1) }
 }
 
-#[uretprobe(name = "tls_ssl_write_return")]
+#[uretprobe]
 pub fn tls_ssl_write_return(ctx: RetProbeContext) -> u32 {
     unsafe { submit_tls_event(&mut TLS_WRITE_STATE, &ctx) }
 }
 
-#[xdp(name = "cyber_kube_xdp")]
+#[xdp]
 pub fn xdp_firewall(ctx: XdpContext) -> u32 {
     match try_xdp_firewall(ctx) {
         Ok(ret) => ret,

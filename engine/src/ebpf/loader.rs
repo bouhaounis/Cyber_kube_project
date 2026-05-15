@@ -86,18 +86,20 @@ impl EbpfLoader {
         tracepoint: &str,
     ) -> Result<bool> {
         for name in candidates {
-            if let Ok(program) = bpf.program_mut(name) {
-                let trace_program: &mut TracePoint = program
-                    .try_into()
-                    .with_context(|| format!("program {name} is not a tracepoint"))?;
-                trace_program
-                    .load()
-                    .with_context(|| format!("loading tracepoint program {name}"))?;
-                trace_program
-                    .attach(category, tracepoint)
-                    .with_context(|| format!("attaching {name} to {category}/{tracepoint}"))?;
-                return Ok(true);
-            }
+            let Some(program) = bpf.program_mut(name) else {
+                continue;
+            };
+
+            let trace_program: &mut TracePoint = program
+                .try_into()
+                .with_context(|| format!("program {name} is not a tracepoint"))?;
+            trace_program
+                .load()
+                .with_context(|| format!("loading tracepoint program {name}"))?;
+            trace_program
+                .attach(category, tracepoint)
+                .with_context(|| format!("attaching {name} to {category}/{tracepoint}"))?;
+            return Ok(true);
         }
 
         Ok(false)

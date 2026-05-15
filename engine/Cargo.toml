@@ -31,7 +31,7 @@ tonic-build = "0.12"
 protoc-bin-vendored = "3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-aya = "0.12"
+aya = { version = "0.12", features = ["async_tokio"] }
 bytes = "1.0"
 
 [dev-dependencies]

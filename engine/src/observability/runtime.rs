@@ -205,7 +205,7 @@ mod imp {
         }
 
         fn attach_uprobe(bpf: &mut Bpf, library_path: &Path, spec: UprobeSpec<'_>) -> Result<bool> {
-            let Ok(program) = bpf.program_mut(spec.program_name) else {
+            let Some(program) = bpf.program_mut(spec.program_name) else {
                 return Ok(false);
             };
 
